@@ -397,6 +397,7 @@ int main() {
     //FILE *fp = fopen("data/segmented_castle_512.ubc", "rb");
 
     
+    
     int size = Nx*Ny*Nz;
     data = new unsigned char[size]; 
     fread(data, sizeof(unsigned char), size, fp);
