@@ -344,7 +344,7 @@ void doGUI() {
 
         if ((pos.x < 0 || pos.y < 0 || pos.z < 0 || pos.x > Nx-1 || pos.y > Ny-1 || pos.z > Nz-1) && (textureMode == GL_CLAMP_TO_BORDER)) {
             ImGui::Text("chosen voxel = OUT_OF_BOUNDS");
-            ImGui::Text("chosen face = OUT_OF_BOUNDS", side_labels[chosenFace+1]);
+            ImGui::Text("chosen face = OUT_OF_BOUNDS");
         } else {
             ImGui::Text("chosen voxel = (%d, %d, %d)", pos2.x, pos2.y, pos2.z);
             ImGui::Text("chosen face = %s", side_labels[chosenFace+1]);
@@ -491,7 +491,7 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
     glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
 
     if ( InfoLogLength > 0 ){
-        char VertexShaderErrorMessage[InfoLogLength];
+        char VertexShaderErrorMessage[9999];
         glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, VertexShaderErrorMessage);
         printf("%s\n", VertexShaderErrorMessage); fflush(stdout);
     }
@@ -512,7 +512,7 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
     glGetShaderiv(FragmentShaderID, GL_COMPILE_STATUS, &Result);
     glGetShaderiv(FragmentShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
     if ( InfoLogLength > 0 ){
-        char FragmentShaderErrorMessage[InfoLogLength];
+        char FragmentShaderErrorMessage[9999];
         glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, FragmentShaderErrorMessage);
         printf("%s\n", FragmentShaderErrorMessage); fflush(stdout);
     }
@@ -530,7 +530,7 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
     glGetProgramiv(ProgramID, GL_INFO_LOG_LENGTH, &InfoLogLength);
 
     if ( InfoLogLength > 0 ){
-        GLchar ProgramErrorMessage[InfoLogLength+1];
+        GLchar ProgramErrorMessage[9999];
         glGetProgramInfoLog(ProgramID, InfoLogLength, NULL, &ProgramErrorMessage[0]);
         printf("%s\n", &ProgramErrorMessage[0]); fflush(stdout);
     }
@@ -565,7 +565,7 @@ GLuint LoadComputeShader(const char * compute_file_path){
     glGetShaderiv(ComputeShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
 
     if ( InfoLogLength > 0 ){
-        char ComputeShaderErrorMessage[InfoLogLength];
+        char ComputeShaderErrorMessage[9999];
         glGetShaderInfoLog(ComputeShaderID, InfoLogLength, NULL, ComputeShaderErrorMessage);
         printf("%s\n", ComputeShaderErrorMessage);
     }
@@ -582,7 +582,7 @@ GLuint LoadComputeShader(const char * compute_file_path){
     glGetProgramiv(ProgramID, GL_INFO_LOG_LENGTH, &InfoLogLength);
 
     if ( InfoLogLength > 0 ){
-        GLchar ProgramErrorMessage[InfoLogLength+1];
+        GLchar ProgramErrorMessage[9999];
         glGetProgramInfoLog(ProgramID, InfoLogLength, NULL, &ProgramErrorMessage[0]);
         printf("%s\n", &ProgramErrorMessage[0]);
     }
@@ -770,7 +770,6 @@ ivec3 traceWrap2(const vec3 &orig, const vec3 &dir, bool &out_of_bounds, int &ou
         ivec3 step = 1 - 2*sign;
         vec3 t = ((0.5f + 0.5f*vec3(step) + vec3(pos)) - orig)*invdir;
         out = -1;
-        int ctr = 0;
         
         while (tnew < 1024) {
             // while inside bounding box
@@ -858,7 +857,6 @@ ivec3 traceWrap(const vec3 &orig, const vec3 &dir, bool &out_of_bounds, int &out
         ivec3 step = 1 - 2*sign;
         vec3 t = ((0.5f + 0.5f*vec3(step) + vec3(pos)) - orig)*invdir;
         out = -1;
-        int ctr = 0;
         
         while (tnew < 1024) {
             // while inside bounding box
@@ -907,7 +905,6 @@ ivec3 traceWrap(const vec3 &orig, const vec3 &dir, bool &out_of_bounds, int &out
 void Draw() {
 
 
-    double t1 = glfwGetTime();
     
     double aspect = resx/resy;
     double FOV = fov*PI/180.0;

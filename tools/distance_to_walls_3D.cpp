@@ -151,23 +151,25 @@ int main() {
     // initialize distance calculations
     distances = new Dist[Nx*Ny*Nz];
     int k = 0;
-    for (int z = 0; z < Nz/4; z++)
-	for (int y = 0; y < Ny/4; y++)
-	for (int x = 0; x < Nx/4; x++) {
-		int dz = z;
-		int dx = x;
-		int dy = y;
+    for (int z = 0; z < Nz/4; z++) {
+		for (int y = 0; y < Ny/4; y++) {
+				for (int x = 0; x < Nx/4; x++) {
+					int dz = z;
+					int dx = x;
+					int dy = y;
 
-		if (dx > Nx/8.0) dx -= Nx/4;
-		if (dy > Ny/8.0) dy -= Ny/4;
-		if (dz > Nz/8.0) dz -= Nz/4;
+					if (dx > Nx/8.0) dx -= Nx/4;
+					if (dy > Ny/8.0) dy -= Ny/4;
+					if (dz > Nz/8.0) dz -= Nz/4;
 
-		// distance relative to (0,0,0)
-		distances[k].dx = dx;
-		distances[k].dy = dy;
-		distances[k].dz = dz;
-		distances[k].dist = (unsigned short)sqrt(dx*dx+dy*dy+dz*dz);
-		k++;
+					// distance relative to (0,0,0)
+					distances[k].dx = dx;
+				distances[k].dy = dy;
+				distances[k].dz = dz;
+				distances[k].dist = (unsigned short)sqrt(dx*dx+dy*dy+dz*dz);
+				k++;
+			}
+		}
 	}
 
 	// sort distances

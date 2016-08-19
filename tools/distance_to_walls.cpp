@@ -504,7 +504,7 @@ void initGL() {
 // Callback function called every time the window size change
 // Adjusts the camera width and heigh so that the scale stays the same
 // Resets projection matrix
-void windowsize_callback(GLFWwindow *win, int width, int height) {
+void windowsize_callback(GLFWwindow* /* win*/, int width, int height) {
 	double distance_per_pixel = cam_height/resy; // assuming cam_height/resy == cam_width/resx
 
 	resx = width;
@@ -574,7 +574,7 @@ void mousebutton_callback(GLFWwindow* win, int button, int action, int mods) {
 }
 
 // Callback function called every time a the mouse is moved
-void mousepos_callback(GLFWwindow* win, double xpos, double ypos) {
+void mousepos_callback(GLFWwindow* /*win*/, double xpos, double ypos) {
 	// move the camera if the first mouse button is held down
 	// the cursor will stay on at the same location relative to world coordinates after movement
 	if (clickedButtons&FIRST_BUTTON) {
@@ -597,7 +597,7 @@ void mousepos_callback(GLFWwindow* win, double xpos, double ypos) {
 // Callback function called every time a the mouse scroll wheel is moved
 // yoffset = up-down
 // xoffset = left-right
-void mousewheel_callback(GLFWwindow* win, double xoffset, double yoffset) {
+void mousewheel_callback(GLFWwindow* win, double /*xoffset*/, double yoffset) {
 	double zoomFactor = pow(0.95,yoffset);
 
 	glfwGetCursorPos(win, &prevx, &prevy);                  // get mouse position in window

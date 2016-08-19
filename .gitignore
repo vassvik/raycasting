@@ -4,3 +4,6 @@
 *.o
 #Ignore linux executable
 *.out
+#Ignore windows executable
+*.exe
+
