@@ -1,0 +1,23 @@
+IDIR=../libraries/imgui
+IDIR2=../libraries
+ODIR=obj
+
+CXXFLAGS=-O2
+LFLAGS=-lglfw3 -lopengl32 -lglu32 -lgdi32 -limm32
+
+all: imgui program tools
+
+program: 
+	g++ -o main.exe main.cpp $(ODIR)/imgui*.o -I$(IDIR) -I$(IDIR2) $(CXXFLAGS) $(LFLAGS)
+
+tools:
+	g++ -o tools/calc_distance.exe tools/distance_to_walls_3D.cpp $($CXXFLAGS) $(LFLAGS)
+	g++ -o tools/visualize_distance.exe tools/distance_to_walls.cpp $($CXXFLAGS) $(LFLAGS) -I$(IDIR2)
+
+imgui:
+	g++ -c -o $(ODIR)/imgui.o      $(IDIR)/imgui.cpp      $(CXXFLAGS) -I$(IDIR)
+	g++ -c -o $(ODIR)/imgui_demo.o $(IDIR)/imgui_demo.cpp $(CXXFLAGS) -I$(IDIR)
+	g++ -c -o $(ODIR)/imgui_draw.o $(IDIR)/imgui_draw.cpp $(CXXFLAGS) -I$(IDIR)
+
+clean:
+	rm -f $(ODIR)/*.o

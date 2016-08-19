@@ -1,0 +1,1 @@
+Plot of different smoothing functions/distance estimators, in case I want smoothed
