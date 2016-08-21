@@ -2,7 +2,7 @@ IDIR=../libraries/imgui
 IDIR2=../libraries
 ODIR=obj
 
-CXXFLAGS=-O2 -Wall -Wextra -Wpedantic
+CXXFLAGS=-O2 -Wall -Wextra -Wpedantic -std=c++11
 CXXFLAGS2=-O2 
 LFLAGS=-lglfw3 -lopengl32 -lglu32 -lgdi32 -limm32
 

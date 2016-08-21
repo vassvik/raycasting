@@ -2,15 +2,16 @@
 #include <stdlib.h>
 #include <math.h>
 
-
 #include <imgui.h>
 #include "imgui_impl_glfw_gl3.h"
 #include "imgui_impl_glfw_gl3.cpp"
+#define IM_ARRAYSIZE(_ARR)  ((int)(sizeof(_ARR)/sizeof(*_ARR)))
 
 #include <GLFW/glfw3.h>
 #include <gl_math.h>
 
-#define IM_ARRAYSIZE(_ARR)  ((int)(sizeof(_ARR)/sizeof(*_ARR)))
+
+#include <utils.h>
 
 
 int mod2(double i, int n) {
@@ -22,6 +23,12 @@ int mod2(double i, double n) {
 
 double time_raytrace = 0;
 double time_blocks = 0;
+double alpha_time = 0.01;
+double time_uploadXY = 0.0;
+double time_uploadXZ = 0.0;
+double time_uploadYZ = 0.0;
+
+
 int intersect = 1;
 double t = 0;
 
@@ -50,6 +57,8 @@ GLuint texture, texture3D, textureCubemap;
 GLint textureMode = GL_CLAMP_TO_BORDER;
 
 
+// vertex position for two triangles (using TRIANGLE_STRIP) covering the whole screen
+GLuint vertexbuffer_quad;
 static const GLfloat g_vertex_buffer_data[] = {
     -1.0f, -1.0f, 0.0f,
      1.0f, -1.0f, 0.0f,
@@ -57,6 +66,8 @@ static const GLfloat g_vertex_buffer_data[] = {
      1.0f,  1.0f, 0.0f,
 };
 
+// uv texture coordinates for the vertices of the two triangles
+GLuint uvbuffer_quad;
 static const GLfloat g_uv_buffer_data[] = {
     0.0f, 0.0f,
     1.0f, 0.0f,
@@ -64,7 +75,6 @@ static const GLfloat g_uv_buffer_data[] = {
     1.0f, 1.0f,
 };
 
-GLuint vertexbuffer_quad, uvbuffer_quad;
 
 
 
@@ -227,7 +237,16 @@ void doInput() {
                 }
 
                 double tt4 = glfwGetTime();
-                printf("time removing: %f %f %f\n", tt2-tt1, tt3-tt2, tt4-tt3); fflush(stdout);
+
+                if (time_uploadXY == 0.0) {
+                    time_uploadXY = tt4-tt3;
+                    time_uploadXZ = tt3-tt2;
+                    time_uploadYZ = tt2-tt1;
+                } else {
+                    time_uploadXY = alpha_time*(tt4-tt3) + (1.0 - alpha_time)*time_uploadXY;
+                    time_uploadXZ = alpha_time*(tt3-tt2) + (1.0 - alpha_time)*time_uploadXZ;
+                    time_uploadYZ = alpha_time*(tt2-tt1) + (1.0 - alpha_time)*time_uploadYZ;
+                }
                 
             } else if (addBlock) {
                 if (chosenFace != -1) {
@@ -307,10 +326,9 @@ void doGUI() {
     // 1. Show a simple window
     // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
     {
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-
         const char* side_labels[] = {"N/A", "-X", "-Y", "-Z", "+X", "+Y", "+Z"};
+
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
         ImGui::Text("res = %dx%d", (int)resx, (int)resy);
         ImGui::Text("%dx%dx%d = %d voxels", Nx, Ny, Nz, Nx*Ny*Nz);
@@ -320,6 +338,17 @@ void doGUI() {
         ImGui::Text("pos = (%.3f, %.3f, %.3f)", cam_pos.x, cam_pos.y, cam_pos.z);
         ImGui::Text("dir = (%.3f, %.3f, %.3f)", f.x, f.y, f.z);
         ImGui::Text("angles = (%.3f, %.3f)", phi*180/PI, theta*180/PI);
+        ImGui::Text("time upload XY slice = %.3f ms", 1000*time_uploadXY);
+        ImGui::Text("time upload XZ slice = %.3f ms", 1000*time_uploadXZ);
+        ImGui::Text("time upload YZ slice = %.3f ms", 1000*time_uploadYZ);
+
+
+
+
+
+
+
+
 
         double hfov = atan(tan((fov*PI/180.0)/2.0)*resx/resy)*180/PI*2;
         ImGui::Text("hfov = %.3f, vfov = %.3f", hfov, fov);
@@ -593,8 +622,6 @@ GLuint LoadComputeShader(const char * compute_file_path){
     
     glUniform1i(glGetUniformLocation(ProgramID, "framebufferImage"), 0);
     glUniform1i(glGetUniformLocation(ProgramID, "voxelTextureSampler"), 1);
-
-
 
     return ProgramID;
 }
@@ -918,19 +945,19 @@ void Draw() {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, resx, resy, 0, GL_RED, GL_FLOAT, NULL);
 
     glUseProgram(computeProgramID);
-    glUniform3fv(glGetUniformLocation(computeProgramID, "orig"), 1, &cam_pos.x);
-    glUniform3fv(glGetUniformLocation(computeProgramID, "f"), 1, &f.x);
-    glUniform3fv(glGetUniformLocation(computeProgramID, "r"), 1, &r.x);
-    glUniform3fv(glGetUniformLocation(computeProgramID, "u"), 1, &u.x);
-    glUniform1f(glGetUniformLocation(computeProgramID, "half_width"), half_width);
-    glUniform1f(glGetUniformLocation(computeProgramID, "half_height"), half_height);
-    glUniform1f(glGetUniformLocation(computeProgramID, "fogDistance"), fogDistance);
+    glUniform3fv(glGetUniformLocation(computeProgramID, "orig"), 1,     &cam_pos.x);
+    glUniform3fv(glGetUniformLocation(computeProgramID, "f"),    1,     &f.x);
+    glUniform3fv(glGetUniformLocation(computeProgramID, "r"),    1,     &r.x);
+    glUniform3fv(glGetUniformLocation(computeProgramID, "u"),    1,     &u.x);
+    glUniform1f( glGetUniformLocation(computeProgramID, "half_width"),  half_width);
+    glUniform1f( glGetUniformLocation(computeProgramID, "half_height"), half_height);
+    glUniform1f( glGetUniformLocation(computeProgramID, "fogDistance"), fogDistance);
     
-    glUniform3iv(glGetUniformLocation(computeProgramID, "chosenVoxel"), 1, &pos.x);
-    glUniform3i(glGetUniformLocation(computeProgramID, "N"), Nx, Ny, Nz);
-    glUniform1i(glGetUniformLocation(computeProgramID, "chosenFace"), chosenFace);
-    glUniform1i(glGetUniformLocation(computeProgramID, "dist_clip"), dist_clipped);
-    glUniform1i(glGetUniformLocation(computeProgramID, "textureMode"), textureMode == GL_REPEAT ? 1 : textureMode == GL_MIRRORED_REPEAT ? 2 : 0);
+    glUniform3iv(glGetUniformLocation(computeProgramID, "chosenVoxel"), 1,  &pos.x);
+    glUniform3i( glGetUniformLocation(computeProgramID, "N"),           Nx, Ny, Nz);
+    glUniform1i( glGetUniformLocation(computeProgramID, "chosenFace"),  chosenFace);
+    glUniform1i( glGetUniformLocation(computeProgramID, "dist_clip"),   dist_clipped);
+    glUniform1i( glGetUniformLocation(computeProgramID, "textureMode"), textureMode == GL_REPEAT ? 1 : textureMode == GL_MIRRORED_REPEAT ? 2 : 0);
 
     glUniform3fv(glGetUniformLocation(computeProgramID, "colors"), 6, &colors[0].x);
 
