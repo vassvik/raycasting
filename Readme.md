@@ -1,5 +1,7 @@
 # Simple Voxel Raycaster
 
+# Pretty much broken right now. will fix eventually
+
 Work-in-progress, documentation coming. 
 
 Dependencies: imgui, glfw3, gl_lite.h (Papaya), gl_math.h
