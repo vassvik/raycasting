@@ -76,7 +76,13 @@ uniform ivec3 face_vectors[3][6] = {
     }
 };
 
-
+struct Hit {
+    vec3 color;
+    vec3 hit_pos;
+    bool hit;
+    int face;
+    float t;
+};
 
 
 #define min3(t) min(min(t.x, t.y), t.z)
@@ -99,12 +105,14 @@ vec3 colorFromFace2(int face, ivec3 pos, vec3 rest_pos, float t) {
     float distance_from_edge2 = dot(e, face_vectors[1][face]);
     vec2 distance_from_edges = vec2(distance_from_edge1, distance_from_edge2);
     float max_distance_from_edges = 1.0 - max(abs(distance_from_edges[0]), abs(distance_from_edges[1]));
+    float min_distance_from_edges = 1.0 - min(abs(distance_from_edges[0]), abs(distance_from_edges[1]));
 
     // outline width scaling by distance from camera and field of view
     ivec2 size = imageSize(framebufferImage);
     float z = 50*half_height/size.y;
     float w = 60*z*t/1024 + z*(1-t/1024);
-    w = max(w, 0.001);
+    float a = atan(distance_from_edges.y, distance_from_edges.x);
+    w = max(w, 0.001)*(1 + 0.5*cos(2*3.141592*min_distance_from_edges + 12*3.14145*a));
 
     // color voxel under cursor specially
     if (chosenVoxel == pos) {
@@ -120,8 +128,65 @@ vec3 colorFromFace2(int face, ivec3 pos, vec3 rest_pos, float t) {
         return vec3(1.0, 0.0, 0.0);
 
     // check if inside
-    if (max_distance_from_edges > w)
+    if (max_distance_from_edges > w) {
         return colors[face];
+        float A = (pos.x + pos.y + pos.z)*10;
+
+        float cx = distance_from_edge1*cos(A) - 0.0 + 0.5*cos((pos.x - 256)/1.0);
+        float cy = distance_from_edge2*cos(A) + 0.5*cos((pos.y - 256)/1.0);
+
+
+        float tmp1 = cx;
+        float tmp2 = cy;
+
+        cx = tmp1*cos(A) - tmp2*sin(A);
+        cy = tmp1*sin(A) + tmp2*cos(A);
+
+        float x = 0.0;
+        float y = 0.0;
+
+        int iter = 0;
+        int maxiter = 50;
+
+        while (x*x + y*y < 4 && iter < maxiter) {
+            float tmp = x*x - y*y + cx;
+            y = 2*x*y + cy;
+            x = tmp;
+            iter++;
+        }
+
+        if (iter == maxiter) {
+            float A = (pos.x + pos.y + pos.z)*10;
+
+            float cx = cos(A);
+            float cy = sin(A);
+
+
+ 
+
+            float x = distance_from_edge1*cos(A) - 0.0 + 0.5*cos((pos.x - 256)/1.0);
+            float y = distance_from_edge2*cos(A) + 0.5*cos((pos.y - 256)/1.0);
+
+            int iter = 0;
+            int maxiter = 50;
+
+            while (x*x + y*y < 4 && iter < maxiter) {
+                float tmp = x*x - y*y + cx;
+                y = 2*x*y + cy;
+                x = tmp;
+                iter++;
+            }
+            if (iter == maxiter)
+                return vec3(0.0, 0.0, 0.0);
+            else
+                return vec3(cos(1.0*iter), cos(2.0*iter), cos(3.0*iter));
+        }
+        else
+            return vec3(cos(1.0*iter), cos(2.0*iter), cos(3.0*iter));
+
+
+        return colors[face];
+    }
 
     // Check edges
     for (int i = 0; i < 2; i++) {
@@ -155,12 +220,12 @@ vec3 colorFromFace2(int face, ivec3 pos, vec3 rest_pos, float t) {
         }
     }   
 
-    // Not close to edges of box, color side normally
+
     return colors[face];
 
 }
 
-vec3 traceWrap(vec3 orig, vec3 dir) {
+Hit traceWrap(vec3 orig, vec3 dir) {
     // Setup intersection test
     vec3 invdir = 1.0/dir;
     ivec3 sign = ivec3((dir.x < 0 ? 1 : 0), (dir.y < 0 ? 1 : 0), (dir.z < 0 ? 1 : 0));
@@ -218,11 +283,19 @@ vec3 traceWrap(vec3 orig, vec3 dir) {
     float dist = clamp(1.0 - tnew/fogDistance, 0.0, 1.0);
      if (pos == chosenVoxel)
         dist = 1.0;
-    return colorFromFace2(face, pos, rest_pos, tnew)*dist + vec3(0.8, 0.8, 0.8)*(1.0 - dist);
 
+    Hit ret;
+    ret.color = colorFromFace2(face, pos, rest_pos, tnew)*dist + vec3(0.8, 0.8, 0.8)*(1.0 - dist);
+    ret.hit_pos = orig + tnew*dir;
+    ret.hit = true;
+    ret.face = face;
+    ret.t = tnew;
+    return ret;
 }
 
-vec3 trace(vec3 orig, vec3 dir) {
+
+
+Hit trace(vec3 orig, vec3 dir) {
     // Setup intersection test
     vec3 invdir = 1.0/dir;
     ivec3 sign = ivec3((dir.x < 0 ? 1 : 0), (dir.y < 0 ? 1 : 0), (dir.z < 0 ? 1 : 0));
@@ -297,15 +370,29 @@ vec3 trace(vec3 orig, vec3 dir) {
                 dist = 1.0;
 
             // blend face color with fog based on distance
-            return colorFromFace2(face, pos, rest_pos, tnew)*dist + vec3(0.8, 0.8, 0.8)*(1.0 - dist);
+            Hit ret;
+            ret.color = colorFromFace2(face, pos, rest_pos, tnew)*dist + vec3(0.8, 0.8, 0.8)*(1.0 - dist);
+            ret.hit_pos = orig + tnew*dir;
+            ret.hit = true;
+            ret.face = face;
+            ret.t = tnew;
+            return ret;
             
         }
     }
 
-    return vec3(0.0, 0.0, 0.0);
+    Hit ret;
+    ret.color = vec3(0.0, 0.0, 0.0);
+    ret.hit_pos = vec3(-1.0, -1.0, -1.0);
+    ret.hit = false;
+    ret.face = -1;
+    ret.t = -1;
+    return ret;
 
     
 }
+
+
 
 /*
     Compute shader -- ray tracing of voxels
@@ -329,13 +416,44 @@ void main() {
     // calculate ray for pixel
     vec3 dir = f + half_height*dy*u + half_width*dx*r;
     vec3 color;
+    Hit ret;
     if (textureMode == 0)
-        color = trace(orig,dir);
+        ret = trace(orig,dir);
     else
-        color = traceWrap(orig,dir);
+        ret = traceWrap(orig,dir);
 
+    imageStore(framebufferImage, pixel, vec4(ret.color, 1.0));
+    return;
+
+    vec3 lightPos = vec3(20,20, 10);
+    vec3 lightDir = normalize(ret.hit_pos - lightPos);
+    Hit ret2;
+
+    if (textureMode == 0)
+        ret2 = trace(lightPos,lightDir);
+    else
+        ret2 = traceWrap(lightPos,lightDir);
+
+
+
+
+    float occlusionDist = 1000000;
+    if (ret.hit && ret.face != -1) {
+        vec3 normalDir = face_vectors[2][ret.face];
+
+        Hit ret3 = trace(ret.hit_pos + 0.01*normalDir, normalDir);
+        if (ret3.hit)
+            occlusionDist = ret3.t;
+    }
+
+    float d = 30;
+
+    if (ret.hit && length(ret2.hit_pos - ret.hit_pos) < 0.01)
+        imageStore(framebufferImage, pixel, vec4(ret.color*0.5  *min(occlusionDist/d, 1.0), 1.0));
+    else
+        imageStore(framebufferImage, pixel, vec4(ret.color*min(occlusionDist/d, 1.0), 1.0));
     // write to frame buffer texture
      //   color = vec3(1,0,0);
-    imageStore(framebufferImage, pixel, vec4(color, 1.0));
+    //imageStore(framebufferImage, pixel, vec4(ret.color, 1.0));
 
 }

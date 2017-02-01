@@ -3,16 +3,20 @@
 #include <math.h>
 
 #include <imgui.h>
+
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
 #include "imgui_impl_glfw_gl3.h"
-#include "imgui_impl_glfw_gl3.cpp"
 #define IM_ARRAYSIZE(_ARR)  ((int)(sizeof(_ARR)/sizeof(*_ARR)))
 
-#include <GLFW/glfw3.h>
 #include <gl_math.h>
 
 
 #include <utils.h>
 
+#define DRAW_FONT_IMPLEMENTATION
+#include "draw_font.h"
 
 int mod2(double i, int n) {
     return i - n*floor(i/n);
@@ -104,7 +108,7 @@ void mousepos_callback(GLFWwindow* win, double xpos, double ypos);
 void mousewheel_callback(GLFWwindow* win, double xoffset, double yoffset);
 void windowsize_callback(GLFWwindow *win, int width, int height);
 
-const int Nx = 512, Ny = Nx, Nz = Nx;
+const int Nx = 512, Ny = 512, Nz = 512;
 ivec3 N = ivec3(Nx, Ny, Nz);
 
 float fogDistance = 128;
@@ -138,12 +142,11 @@ void updateComputeShader() {
 void doInput() {
     ImGuiIO& io = ImGui::GetIO();
 
-
     if (!io.WantCaptureMouse) {
         if (io.MouseDown[0]) {
-            double anglesPerPixel = 0.1 * PI / 180.0;
-            phi = fmod(phi - io.MouseDelta.x * anglesPerPixel + 2*PI, 2*PI);   // periodic
-            theta = max(1.0*PI/180.0, min(179.0*PI/180.0, theta + io.MouseDelta.y * anglesPerPixel));
+            double radiansPerPixel = 0.1 * PI / 180.0;                                               // 0.1 radians per pixel
+            phi = fmod(phi - io.MouseDelta.x * radiansPerPixel + 2*PI, 2*PI);                        // periodic
+            theta = CLAMP(theta + io.MouseDelta.y * radiansPerPixel, 1.0*PI/180.0, 179.0*PI/180.0);  // restricted
         }
 
         if (io.MouseWheel != 0.0) {
@@ -179,7 +182,7 @@ void doInput() {
             pos = traceWrap2(cam_pos, dir, out_of_bounds, chosenFace);
         else
             pos = trace(cam_pos, dir, out_of_bounds, chosenFace);
-
+        
 
         double t2 = glfwGetTime();
         time_raytrace = 1e9*(t2-t1);
@@ -207,6 +210,7 @@ void doInput() {
             int X = pos2.x, Y = pos2.y, Z = pos2.z;
 
             if (removeBlock) {
+                /*
                 unsigned char values1[Ny*Nz], values2[Nx*Nz], values3[Nx*Ny];
                 for (int i = 0; i < Ny*Nz; i++) values1[i] = 255;
                 for (int i = 0; i < Nx*Nz; i++) values2[i] = 255;
@@ -247,6 +251,7 @@ void doInput() {
                     time_uploadXZ = alpha_time*(tt3-tt2) + (1.0 - alpha_time)*time_uploadXZ;
                     time_uploadYZ = alpha_time*(tt2-tt1) + (1.0 - alpha_time)*time_uploadYZ;
                 }
+                */
                 
             } else if (addBlock) {
                 if (chosenFace != -1) {
@@ -419,20 +424,58 @@ void doGUI() {
 }
 
 
+double rng() {
+    static unsigned int seed = 1231;
+    seed *= 16807;
+    return seed/double((0xFFFFFFFF)+1.0);
+}
+
 int main() {
 
     // If using "segmented_castle_512.ubc" instead of "distance_segmented_castle_512.ubc", no distance estimation
-    FILE *fp = fopen("data/distance_segmented_castle_512.ubc", "rb");
+    //FILE *fp = fopen("data/distance_segmented_castle_512.ubc", "rb");
     //FILE *fp = fopen("data/segmented_castle_512.ubc", "rb");
 
     
-    
-    int size = Nx*Ny*Nz;
-    data = new unsigned char[size]; 
-    fread(data, sizeof(unsigned char), size, fp);
+    //fread(data, sizeof(unsigned char), size, fp);
 
     
-    fclose(fp);
+    //fclose(fp);
+    size_t size = size_t(Nx)*size_t(Ny)*size_t(Nz);
+    data = new unsigned char[size]; 
+
+    for (size_t i = 0; i < size; i++)
+        data[i] = 255;
+    
+    size_t xx = 0;
+    size_t yy = 0;
+    size_t zz = 0;
+
+    for (size_t i = 0; i < size/10; i++) {
+        size_t k = zz*Nx*Ny + yy*Nx + xx;
+        data[k] = 0;
+        int r = 6*rng();
+        switch(r) {
+            case 0:
+                xx = (xx - 1 + Nx) % Nx;
+                break;
+            case 1:
+                xx = (xx + 1 + Nx) % Nx;
+                break;
+            case 2:
+                yy = (yy - 1 + Ny) % Ny;
+                break;
+            case 3:
+                yy = (yy + 1 + Ny) % Ny;
+                break;
+            case 4:
+                zz = (zz - 1 + Nz) % Nz;
+                break;
+            case 5:
+                zz = (zz + 1 + Nz) % Nz;
+                break;
+        }
+    }
 
 
     initGL();
@@ -453,21 +496,31 @@ int main() {
         ImGui_ImplGlfwGL3_NewFrame();
 
 
-
         Draw();
+
+        char str[] = "test asdkaljsdalsd\n";
+        float offset[2] = {0.0, 0.0};
+        float size[2] = {2.0, 2.0};
+        float res[2] = {resx, resy};
+        font_draw(str, NULL, offset, size, res);
+
         
-        doInput();
         doGUI();
+        doInput();
+
 
         ImGui::Render();  // DOESNT WORK, WHY? TEXTURE BINDING INTERFERENCE?
 
         // Swap buffers
+
+
         glfwSwapBuffers(window);
 
         glfwPollEvents();
     }
 
     glDeleteVertexArrays(1, &VertexArrayID);
+    glDeleteBuffers(1, &vertexbuffer_quad);
     glDeleteProgram(programID);
 
     glfwTerminate();
@@ -507,7 +560,8 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
     // Other informaion can be sent to the fragment shader
 
     // Create the Vertex shader
-    GLuint VertexShaderID   = glCreateShader(GL_VERTEX_SHADER);
+    GLuint VertexShaderID;
+    VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
     char *VertexShaderCode   = readFile(vertex_file_path);
 
     // Compile Vertex Shader
@@ -529,7 +583,8 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
     // The fragment shader is called on every fragment (pixel/sample), usually for coloring. 
 
     // Create the Fragment shader
-    GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
+    GLuint FragmentShaderID;
+    FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
     char *FragmentShaderCode = readFile(fragment_file_path);
 
     // Compile Fragment Shader
@@ -549,7 +604,8 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
 
     // Create and Link the program
     printf("Linking program\n"); fflush(stdout);
-    GLuint ProgramID = glCreateProgram();
+    GLuint ProgramID;
+    ProgramID= glCreateProgram();
     glAttachShader(ProgramID, VertexShaderID);
     glAttachShader(ProgramID, FragmentShaderID);
     glLinkProgram(ProgramID);
@@ -577,7 +633,8 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
 GLuint LoadComputeShader(const char * compute_file_path){
 
     // Create the shaders
-    GLuint ComputeShaderID   = glCreateShader(GL_COMPUTE_SHADER);
+    GLuint ComputeShaderID;
+    ComputeShaderID   = glCreateShader(GL_COMPUTE_SHADER);
     char *ComputeShaderCode   = readFile(compute_file_path);
 
 
@@ -602,7 +659,8 @@ GLuint LoadComputeShader(const char * compute_file_path){
 
     // Link the program
     printf("Linking program\n");
-    GLuint ProgramID = glCreateProgram();
+    GLuint ProgramID;
+    ProgramID = glCreateProgram();
     glAttachShader(ProgramID, ComputeShaderID);
     glLinkProgram(ProgramID);
 
@@ -620,8 +678,11 @@ GLuint LoadComputeShader(const char * compute_file_path){
 
     glUseProgram(ProgramID);
     
-    glUniform1i(glGetUniformLocation(ProgramID, "framebufferImage"), 0);
-    glUniform1i(glGetUniformLocation(ProgramID, "voxelTextureSampler"), 1);
+    GLuint loc1, loc2;
+    loc1 = glGetUniformLocation(ProgramID, "framebufferImage");
+    loc2 = glGetUniformLocation(ProgramID, "voxelTextureSampler");
+    glUniform1i(loc1, 0);
+    glUniform1i(loc2, 1);
 
     return ProgramID;
 }
@@ -790,7 +851,7 @@ ivec3 traceWrap2(const vec3 &orig, const vec3 &dir, bool &out_of_bounds, int &ou
 
 
 
-    if (data[pos2.z*Nx*Ny + pos2.y*Nx + pos2.x] == 0) {
+    if (data[size_t(pos2.z)*Nx*Ny + pos2.y*Nx + pos2.x] == 0) {
         out_of_bounds = false;
     } else {
         vec3 tDelta = abs(invdir);                       // the amount to move along the ray to cross a voxel in each direction
@@ -814,7 +875,7 @@ ivec3 traceWrap2(const vec3 &orig, const vec3 &dir, bool &out_of_bounds, int &ou
             if (pos3.y % 2 != 0) pos2.y = Ny-1 - pos2.y;
             if (pos3.z % 2 != 0) pos2.z = Nz-1 - pos2.z;
 
-            if (data[pos2.z*Nx*Ny + pos2.y*Nx + pos2.x] == 0) { // HIT!
+            if (data[size_t(pos2.z)*Nx*Ny + pos2.y*Nx + pos2.x] == 0) { // HIT!
                 out_of_bounds = false;
                 break;
             }
@@ -877,7 +938,7 @@ ivec3 traceWrap(const vec3 &orig, const vec3 &dir, bool &out_of_bounds, int &out
     pos3.z = pos.z/Nz;
 
 
-    if (data[pos2.z*Nx*Ny + pos2.y*Nx + pos2.x] == 0) {
+    if (data[size_t(pos2.z)*Nx*Ny + pos2.y*Nx + pos2.x] == 0) {
         out_of_bounds = false;
     } else {
         vec3 tDelta = abs(invdir);                       // the amount to move along the ray to cross a voxel in each direction
@@ -897,7 +958,7 @@ ivec3 traceWrap(const vec3 &orig, const vec3 &dir, bool &out_of_bounds, int &out
             pos3.y = floor(pos.y/float(Ny));
             pos3.z = floor(pos.z/float(Nz));
 
-            if (data[pos2.z*Nx*Ny + pos2.y*Nx + pos2.x] == 0) { // HIT!
+            if (data[size_t(pos2.z)*Nx*Ny + pos2.y*Nx + pos2.x] == 0) { // HIT!
                 out_of_bounds = false;
                 break;
             }
@@ -1001,10 +1062,30 @@ void initGL() {
     }
     glfwMakeContextCurrent(window); 
 
+    
+    printf("%s\n", glGetString(GL_VERSION)); fflush(stdout);
+
+    /*    
     if (!gl_lite_init()) {
         printf("error init gl_lite\n"); fflush(stdout);
     }
+    */
 
+    glewExperimental = true; // Needed for core profile
+    if (glewInit() != GLEW_OK) {
+        fprintf(stderr, "Failed to initialize GLEW\n");
+        exit(-3);
+    }
+    
+
+    /*
+    // Initialize flextGL
+    if (flextInit() != GL_TRUE) {
+
+        glfwTerminate();
+        exit(-3);
+    }
+    */
 
     // Create and bind  VBO (Vertex Buffer Object). Vertex and element buffers are attached to this. 
     // Can have multiple VBO's
@@ -1037,12 +1118,16 @@ void initGL() {
     glGenTextures(1, &texture3D);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_3D, texture3D);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RED, Nx, Ny, Nz, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_R8, Nx, Ny, Nz, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+    int error = glGetError();
+    printf("error = %d\n", error); fflush(stdout);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, textureMode);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, textureMode);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, textureMode);
+
+
 
     // VSync on
     // set background color and enable depth testing

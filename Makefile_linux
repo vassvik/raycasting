@@ -2,24 +2,25 @@ IDIR=../libraries/imgui
 IDIR2=../libraries
 ODIR=obj
 
-CXXFLAGS=-O2
-LFLAGS=-lglfw -GL
+CXXFLAGS=-DGLEW_STATIC -O0 -Wall -Wextra -Wpedantic -std=c++11 -g
+CXXFLAGS2=-DGLEW_STATIC -O2 
+LFLAGS=-lglfw -lGLEW -lGL
+
 
 all: imgui program tools
 
 program: 
-	mkdir -p $(ODIR)
 	g++ -o main.exe main.cpp $(ODIR)/imgui*.o -I$(IDIR) -I$(IDIR2) $(CXXFLAGS) $(LFLAGS)
 
 tools:
-	g++ -o tools/calc_distance.exe tools/distance_to_walls_3D.cpp $($CXXFLAGS) $(LFLAGS)
-	g++ -o tools/visualize_distance.exe tools/distance_to_walls.cpp $($CXXFLAGS) $(LFLAGS) -I$(IDIR2)
+	g++ -o tools/calc_distance.exe tools/distance_to_walls_3D.cpp $(CXXFLAGS) $(LFLAGS)
+	g++ -o tools/visualize_distance.exe tools/distance_to_walls.cpp $(CXXFLAGS) $(LFLAGS) -I$(IDIR2)
 
 imgui:
-	mkdir -p $(ODIR)
-	g++ -c -o $(ODIR)/imgui.o      $(IDIR)/imgui.cpp      $(CXXFLAGS) -I$(IDIR)
-	g++ -c -o $(ODIR)/imgui_demo.o $(IDIR)/imgui_demo.cpp $(CXXFLAGS) -I$(IDIR)
-	g++ -c -o $(ODIR)/imgui_draw.o $(IDIR)/imgui_draw.cpp $(CXXFLAGS) -I$(IDIR)
+	g++ -c -o $(ODIR)/imgui_impl_glfw_gl3.o  $(IDIR)/imgui_impl_glfw_gl3.cpp  $(CXXFLAGS2) -I$(IDIR)
+	g++ -c -o $(ODIR)/imgui.o                $(IDIR)/imgui.cpp                $(CXXFLAGS2) -I$(IDIR)
+	g++ -c -o $(ODIR)/imgui_demo.o           $(IDIR)/imgui_demo.cpp           $(CXXFLAGS2) -I$(IDIR)
+	g++ -c -o $(ODIR)/imgui_draw.o           $(IDIR)/imgui_draw.cpp           $(CXXFLAGS2) -I$(IDIR)
 
 clean:
 	rm -f $(ODIR)/*.o

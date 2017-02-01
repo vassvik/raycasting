@@ -19,14 +19,6 @@ cmap = 'Paired'
 
 
 
-Nx = 10
-Ny = 10
-biggrid = numpy.random.randint(0, 2, size=(Nx, Ny))
-for i in range(Nx):
-	for j in range(Ny):
-		if i == 0 or j == 0 or i == Nx-1 or j == Ny-1:
-			biggrid[j][i] = 0
-
 funs = [
 	lambda t: numpy.floor(1.9999*t), 
 	lambda t: t,
@@ -51,6 +43,15 @@ strings = [
 
 
 size = (21,12)
+"""
+Nx = 10
+Ny = 10
+biggrid = numpy.random.randint(0, 2, size=(Nx, Ny))
+for i in range(Nx):
+	for j in range(Ny):
+		if i == 0 or j == 0 or i == Nx-1 or j == Ny-1:
+			biggrid[j][i] = 0
+
 plt.figure(figsize=size)
 for k in range(len(funs)):
 	plt.subplot(2,4,k+1)
@@ -62,30 +63,36 @@ for k in range(len(funs)):
 	plt.title(strings[k])
 	plt.colorbar()
 plt.savefig("v.png")
+"""
+
+a = 1.0
 
 plt.figure(figsize=size)
 x = [1.0*i/999 for i in range(1000)]
+t = numpy.power(x,a)
 for k in range(len(funs)):
-	plt.plot(x, [funs[k](x) for x in x], label=strings[k])
+	print(k)
+	y = funs[k](t)
+	plt.plot(x, y, label=strings[k])
 plt.legend(loc='best')
 plt.savefig("f.png")
 
 plt.figure(figsize=size)
-x = [1.0*i/999 for i in range(1000)]
 for k in range(len(funs)):
-	dy = numpy.gradient([funs[k](x) for x in x])
+	y = funs[k](t)
+	dy = numpy.gradient(y)
 	dy = dy/max(dy)
 	plt.plot(x, dy, label=strings[k])
 plt.legend(loc='best')
 plt.savefig("dx.png")
 
 plt.figure(figsize=size)
-x = [1.0*i/999 for i in range(1000)]
 for k in range(len(funs)):
+	y = funs[k](t)
 	if strings[k] == r"$t$":
-		dy2 = 0*numpy.gradient(numpy.gradient([funs[k](x) for x in x]))
+		dy2 = 0*numpy.gradient(numpy.gradient(y))
 	else:
-		dy2 =  numpy.gradient(numpy.gradient([funs[k](x) for x in x]))
+		dy2 =  numpy.gradient(numpy.gradient(y))
 		dy2 = dy2 / max(dy2)
 	plt.plot(x, dy2, label=strings[k])
 plt.legend(loc='best')
